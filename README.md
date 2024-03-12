@@ -1,5 +1,3 @@
-GPT
-Certainly! Here's a revised, concise description for your GitHub repository, focusing on a Node.js backend and React frontend:
 
 Translation Management System
 Overview
