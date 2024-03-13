@@ -3,7 +3,7 @@ import axios from "axios";
 import AddApplicationForm from "./AddApplicationForm";
 import { Grid, Card, CardContent, Typography, Button, Box, CardActionArea } from "@mui/material";
 
-const apiBaseUrl = "http://localhost:3000/api/applications";
+const apiBaseUrl = `${process.env.REACT_APP_API_BASE_URL}/api/applications`;
 
 const formatDate = (isoDateString) => {
   return isoDateString !== "Not deployed yet" ? new Date(isoDateString).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : "Not deployed yet";

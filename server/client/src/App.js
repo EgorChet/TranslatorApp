@@ -22,12 +22,13 @@ function App() {
 
   const fetchApplications = useCallback(async () => {
     try {
-      const { data } = await axios.get("http://localhost:3000/api/applications");
+      const { data } = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/applications`);
       setApplications(data);
     } catch (error) {
       console.error("Error fetching applications:", error);
     }
   }, []);
+  
 
   useEffect(() => {
     fetchApplications();

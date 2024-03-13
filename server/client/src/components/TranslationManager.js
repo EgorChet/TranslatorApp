@@ -22,7 +22,10 @@ function TranslationManager({ appName }) {
     };
 
     axios
-      .post(`http://localhost:3000/api/applications/${appName}/add`, translationData)
+      .post(
+        `${process.env.REACT_APP_API_BASE_URL}/api/applications/${appName}/add`,
+        translationData
+      )
       .then(() => {
         alert("Translations added successfully!");
         setKey("");

@@ -6,7 +6,7 @@ import { TextField, Button, Box, CircularProgress, Typography, Snackbar } from "
 const useApplicationAPI = (onSuccess, onError) => {
   const addApplication = async (appName) => {
     try {
-      await axios.post("http://localhost:3000/api/applications", { name: appName });
+      await axios.post(`${process.env.REACT_APP_API_BASE_URL}/api/applications`, { name: appName });
       onSuccess("Application added successfully!");
     } catch (error) {
       onError("Failed to add application.");
@@ -41,16 +41,45 @@ function AddApplicationForm({ onAddApplication }) {
 
   return (
     <>
-      <Box component="form" onSubmit={handleFormSubmit} sx={{ maxWidth: 400, mx: "auto", my: 2 }} noValidate autoComplete="off">
-        <Typography variant="h6" gutterBottom>Add New Application</Typography>
-        <TextField fullWidth id="appName" label="Application Name" variant="outlined" margin="normal" value={appName} onChange={(e) => setAppName(e.target.value)} required placeholder="Enter Application Name" />
+      <Box
+        component='form'
+        onSubmit={handleFormSubmit}
+        sx={{ maxWidth: 400, mx: "auto", my: 2 }}
+        noValidate
+        autoComplete='off'
+      >
+        <Typography variant='h6' gutterBottom>
+          Add New Application
+        </Typography>
+        <TextField
+          fullWidth
+          id='appName'
+          label='Application Name'
+          variant='outlined'
+          margin='normal'
+          value={appName}
+          onChange={(e) => setAppName(e.target.value)}
+          required
+          placeholder='Enter Application Name'
+        />
         <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", mt: 2 }}>
-          <Button type="submit" variant="contained" color="primary" disabled={isSubmitting} sx={{ textTransform: "none" }}>
-            {isSubmitting ? <CircularProgress size={24} color="inherit" /> : "Add Application"}
+          <Button
+            type='submit'
+            variant='contained'
+            color='primary'
+            disabled={isSubmitting}
+            sx={{ textTransform: "none" }}
+          >
+            {isSubmitting ? <CircularProgress size={24} color='inherit' /> : "Add Application"}
           </Button>
         </Box>
       </Box>
-      <Snackbar open={!!message} autoHideDuration={6000} onClose={() => setMessage("")} message={message} />
+      <Snackbar
+        open={!!message}
+        autoHideDuration={6000}
+        onClose={() => setMessage("")}
+        message={message}
+      />
     </>
   );
 }
