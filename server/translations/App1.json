@@ -13,5 +13,10 @@
     "en": "Hello",
     "fr": "Bonjour",
     "nl": "Привет"
+  },
+  "apple": {
+    "en": "Apple",
+    "fr": "Yabloko",
+    "nl": "Яблоко"
   }
 }
