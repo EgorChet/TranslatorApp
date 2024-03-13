@@ -1,6 +1,7 @@
 // server/server.js
 
 require("dotenv").config();
+const path = require('path');
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -24,4 +25,12 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+});
+
+// Serve any static files
+app.use(express.static(path.join(__dirname, 'client/build')));
+
+// Handle React routing, return all requests to React app
+app.get('*', function(req, res) {
+  res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
 });
