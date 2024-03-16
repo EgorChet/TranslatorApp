@@ -1,7 +1,7 @@
 // server/api/controllers/applicationsController.js
-
 const Application = require("../models/applications");
 const ExcelJS = require("exceljs");
+const db = require("../config/db");
 
 exports.listAllApplications = async (req, res) => {
   try {
@@ -27,10 +27,10 @@ exports.createApplication = async (req, res) => {
 exports.getApplicationTranslations = async (req, res) => {
   const { name } = req.params;
   try {
-    const translations = await Application.getApplicationTranslations(name);
+    const app = await Application.getApplicationTranslations(name);
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Translations");
-    
+
     worksheet.columns = [
       { header: "Key", key: "key", width: 30 },
       { header: "English", key: "en", width: 30 },
@@ -38,12 +38,25 @@ exports.getApplicationTranslations = async (req, res) => {
       { header: "Dutch", key: "nl", width: 30 },
       // Add more languages if necessary
     ];
-    
-    for (const [key, value] of Object.entries(translations)) {
-      worksheet.addRow({ key, ...value });
-    }
-    
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+
+    // Transform data into the expected structure for the Excel worksheet
+    let translationData = {};
+    app.forEach((t) => {
+      if (!translationData[t.translation_key]) {
+        translationData[t.translation_key] = { key: t.translation_key };
+      }
+      translationData[t.translation_key][t.language_code] = t.translation_text;
+    });
+
+    // Add rows to the worksheet
+    Object.values(translationData).forEach((row) => {
+      worksheet.addRow(row);
+    });
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
     res.setHeader("Content-Disposition", `attachment; filename="${name}-translations.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
@@ -55,7 +68,7 @@ exports.getApplicationTranslations = async (req, res) => {
 
 exports.addApplicationTranslations = async (req, res) => {
   const { name } = req.params;
-  const translations = req.body;
+  const { translations } = req.body;
   try {
     await Application.addApplicationTranslations(name, translations);
     res.status(200).send("Translations added successfully.");
@@ -88,3 +101,30 @@ exports.getDeploymentDate = async (req, res) => {
   }
 };
 
+exports.deleteApplicationAndTranslations = async (req, res) => {
+  const { name } = req.params;
+
+  try {
+    // Begin transaction
+    await db.transaction(async (trx) => {
+      // Find application by name to get its id
+      const application = await trx("applications").where({ name }).first();
+      if (!application) {
+        return res.status(404).send("Application not found.");
+      }
+
+      // Use the application's id to delete translations
+      await trx("translations").where({ application_id: application.id }).del();
+
+      // Then delete the application itself
+      await trx("applications").where({ id: application.id }).del();
+    });
+
+    res.status(200).send(`Application '${name}' and associated translations deleted successfully.`);
+  } catch (error) {
+    console.error("Error deleting application:", error);
+    res.status(500).send("Failed to delete the application.");
+  }
+};
+
+module.exports = exports;

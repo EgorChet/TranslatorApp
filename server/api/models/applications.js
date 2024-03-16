@@ -1,97 +1,103 @@
 // server/api/models/applications.js
+const db = require("../config/db");
 
-const fs = require("fs").promises;
-const path = require("path");
-
-const TRANSLATIONS_DIR = path.join(__dirname, "../../translations");
-const LIVE_TRANSLATIONS_DIR = path.join(__dirname, "../../live_translations");
-
-/**
- * Generates the path to the metadata file for a given application.
- * @param {string} name The name of the application.
- * @returns {string} Path to the metadata file.
- */
-const getDeploymentMetadataPath = (name) => path.join(LIVE_TRANSLATIONS_DIR, `${name}-metadata.json`);
-
-/**
- * Reads and parses JSON from a given file path.
- * @param {string} filePath Path to the JSON file.
- * @returns {Promise<Object>} Parsed JSON object from the file.
- */
-const readJsonFromFile = async (filePath) => {
-  try {
-    const data = await fs.readFile(filePath, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error(`Error reading from ${filePath}:`, error);
-    throw error; // Consider more nuanced error handling based on error codes
-  }
-};
-
-/**
- * Writes an object as JSON to a given file path.
- * @param {string} filePath Path to the file where JSON should be written.
- * @param {Object} data Data to be written as JSON.
- * @returns {Promise<void>}
- */
-const writeJsonToFile = async (filePath, data) => {
-  try {
-    const jsonContent = JSON.stringify(data, null, 2);
-    await fs.writeFile(filePath, jsonContent);
-  } catch (error) {
-    console.error(`Error writing to ${filePath}:`, error);
-    throw error; // Consider more nuanced error handling based on error codes
-  }
-};
-
+// Replace the listAllApplications function in applications.js
 async function listAllApplications() {
   try {
-    const files = await fs.readdir(TRANSLATIONS_DIR);
-    return files.map((file) => path.basename(file, ".json"));
+    const applications = await db.select("name").from("applications");
+    return applications.map((app) => app.name);
   } catch (error) {
     console.error("Failed to list applications:", error);
     throw error;
   }
 }
 
+// Replace the createApplication function in applications.js
 async function createApplication(name) {
-  const filePath = path.join(TRANSLATIONS_DIR, `${name}.json`);
-  await writeJsonToFile(filePath, {});
-}
-
-async function getApplicationTranslations(name) {
-  const filePath = path.join(TRANSLATIONS_DIR, `${name}.json`);
-  return await readJsonFromFile(filePath);
-}
-
-async function addApplicationTranslations(name, translations) {
-  const filePath = path.join(TRANSLATIONS_DIR, `${name}.json`);
-  const currentData = await readJsonFromFile(filePath).catch(() => ({}));
-  const updatedData = { ...currentData, ...translations };
-  await writeJsonToFile(filePath, updatedData);
-}
-
-async function deployApplicationTranslations(name) {
-  const sourcePath = path.join(TRANSLATIONS_DIR, `${name}.json`);
-  const targetPath = path.join(LIVE_TRANSLATIONS_DIR, `${name}.json`);
-  await fs.copyFile(sourcePath, targetPath);
-  await updateDeploymentDate(name);
-}
-
-async function updateDeploymentDate(name) {
-  const metadataPath = getDeploymentMetadataPath(name);
-  const metadata = { lastDeployed: new Date().toISOString() };
-  await writeJsonToFile(metadataPath, metadata);
-}
-
-async function getDeploymentDate(name) {
-  const metadataPath = getDeploymentMetadataPath(name);
   try {
-    const metadata = await readJsonFromFile(metadataPath);
-    return metadata.lastDeployed;
+    await db("applications").insert({ name });
   } catch (error) {
-    return "Not deployed yet";
+    console.error("Error creating application:", error);
+    throw error;
   }
+}
+// Replace the getApplicationTranslations function in applications.js
+async function getApplicationTranslations(appName) {
+  try {
+    const app = await db("applications").where({ name: appName }).first();
+    if (app) {
+      const translations = await db("translations")
+        .where({ application_id: app.id, is_live: true })
+        .select("language_code", "translation_key", "translation_text");
+      return translations;
+    }
+    return null; // or throw an error if the app is not found
+  } catch (error) {
+    throw error;
+  }
+}
+
+// Replace the addApplicationTranslations function in applications.js
+async function addApplicationTranslations(name, translations) {
+  try {
+    const app = await db("applications").where({ name }).first();
+    if (app) {
+      const translationInserts = translations.map((translation) => ({
+        application_id: app.id,
+        language_code: translation.language_code,
+        translation_key: translation.translation_key,
+        translation_text: translation.translation_text,
+        is_live: false, // Or however you're handling the live status
+      }));
+      await db("translations").insert(translationInserts);
+    } else {
+      throw new Error(`Application with name ${name} not found`);
+    }
+  } catch (error) {
+    console.error("Error adding translations:", error);
+    throw error; // Or handle the error as needed
+  }
+}
+// Replace the deployApplicationTranslations function in applications.js
+async function deployApplicationTranslations(name) {
+  try {
+    const app = await db("applications").where({ name }).first();
+    if (app) {
+      await db("translations").where({ application_id: app.id }).update({ is_live: true });
+    }
+  } catch (error) {
+    console.error("Error deploying translations:", error);
+    throw error;
+  }
+}
+
+// Update the updateDeploymentDate function in applications.js
+async function updateDeploymentDate(name) {
+  try {
+    await db("applications").where({ name }).update({ last_deployed: new Date().toISOString() });
+  } catch (error) {
+    console.error("Error updating deployment date:", error);
+    throw error;
+  }
+}
+
+// Update the getDeploymentDate function in applications.js
+async function getDeploymentDate(name) {
+  try {
+    const app = await db("applications").where({ name }).select("last_deployed").first();
+    return app ? app.last_deployed : "Not deployed yet";
+  } catch (error) {
+    console.error("Error getting deployment date:", error);
+    throw error;
+  }
+}
+
+async function deleteTranslations(applicationId) {
+  await db("translations").where({ application_id: applicationId }).del();
+}
+
+async function deleteApplication(applicationId) {
+  await db("applications").where({ id: applicationId }).del();
 }
 
 module.exports = {
@@ -102,5 +108,6 @@ module.exports = {
   deployApplicationTranslations,
   updateDeploymentDate,
   getDeploymentDate,
+  deleteTranslations,
+  deleteApplication,
 };
-

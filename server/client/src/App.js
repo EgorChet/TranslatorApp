@@ -10,6 +10,11 @@ import {
   Typography,
   ListItem,
   ListItemText,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Button,
 } from "@mui/material";
 import GeneralAppsPage from "./components/GeneralAppsPage";
 import TranslationManager from "./components/TranslationManager";
@@ -19,24 +24,125 @@ const drawerWidth = 240;
 function App() {
   const [applications, setApplications] = useState([]);
   const [selectedApp, setSelectedApp] = useState(null);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [appToDelete, setAppToDelete] = useState("");
+  const [deploymentDates, setDeploymentDates] = useState({});
 
-  const fetchApplications = useCallback(async () => {
+  const formatDate = (isoDateString) => {
+    if (!isoDateString || isoDateString === "Not deployed yet") {
+      return "Not deployed yet";
+    }
+
+    const date = new Date(isoDateString);
+    const day = date.getDate();
+    const month = date.toLocaleString("default", { month: "long" });
+    const hours = date.getHours().toString().padStart(2, "0");
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+
+    return `${day} ${month} ${hours}:${minutes}`;
+  };
+
+  const fetchApplicationsAndDates = useCallback(async () => {
     try {
-      const { data } = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/applications`);
-      setApplications(data);
+      const appData = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/applications`);
+      setApplications(appData.data);
+
+      const dates = {};
+      for (const appName of appData.data) {
+        const response = await axios.get(
+          `${process.env.REACT_APP_API_BASE_URL}/api/applications/${appName}/deployment-date`
+        );
+        // Here we use formatDate to format the deployment date
+        const formattedDate = formatDate(response.data.lastDeployed);
+        dates[appName] = formattedDate; // Save the formatted date
+      }
+      setDeploymentDates(dates);
     } catch (error) {
-      console.error("Error fetching applications:", error);
+      console.error("Error fetching applications or deployment dates:", error);
     }
   }, []);
-  
 
   useEffect(() => {
-    fetchApplications();
-  }, [fetchApplications]);
+    fetchApplicationsAndDates();
+  }, [fetchApplicationsAndDates]);
 
-  const handleAddApplication = useCallback((newAppName) => {
-    setApplications((prevApps) => [...prevApps, newAppName]);
+  const handleAddApplication = useCallback((appName) => {
+    setApplications((prev) => [...prev, appName]);
+    // Optionally call fetchApplicationsAndDates if you expect immediate backend updates
   }, []);
+
+  const requestDeleteApplication = (appName) => {
+    setAppToDelete(appName);
+    setOpenDialog(true);
+  };
+
+  const handleDeleteApplication = async () => {
+    try {
+      await axios.delete(
+        `${process.env.REACT_APP_API_BASE_URL}/api/applications/${encodeURIComponent(appToDelete)}`
+      );
+      fetchApplicationsAndDates(); // Refresh list and dates to ensure it's up-to-date
+      setOpenDialog(false);
+      setAppToDelete("");
+    } catch (error) {
+      console.error("Error deleting application:", error);
+    }
+  };
+
+  const updateDeploymentDate = async (appName) => {
+    try {
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_BASE_URL}/api/applications/${appName}/deployment-date`
+      );
+      setDeploymentDates((prevDates) => ({ ...prevDates, [appName]: response.data.lastDeployed }));
+    } catch (error) {
+      console.error("Error updating deployment date:", error);
+    }
+  };
+
+  const handleDeployApplication = async (appName) => {
+    try {
+      // Assuming deployment initiates here
+      await axios.post(`${process.env.REACT_APP_API_BASE_URL}/api/applications/${appName}/deploy`);
+      // Fetch new deployment date and update state
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_BASE_URL}/api/applications/${appName}/deployment-date`
+      );
+      const newDeploymentDate = response.data.lastDeployed;
+      setDeploymentDates((prevDates) => ({
+        ...prevDates,
+        [appName]: formatDate(newDeploymentDate),
+      }));
+    } catch (error) {
+      console.error("Deployment failed for ", appName, ": ", error);
+    }
+  };
+
+  const handleDownload = async (appName) => {
+    try {
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_BASE_URL}/api/applications/${appName}/translations`,
+        {
+          responseType: "blob", // Important for downloading files
+        }
+      );
+
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `${appName}-translations.xlsx`); // Setting the file name
+      document.body.appendChild(link);
+      link.click(); // Triggering the download
+
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Error downloading translations for app:", appName, error);
+      // Optionally, you can alert the user or show a snackbar message
+    }
+  };
 
   return (
     <Box sx={{ display: "flex" }}>
@@ -60,28 +166,18 @@ function App() {
         <List>
           <ListItem
             button
-            key='My Apps'
+            key='All Apps'
             selected={selectedApp === null}
             onClick={() => setSelectedApp(null)}
-            sx={{
-              "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.04)" },
-              "&.Mui-selected": { backgroundColor: "rgba(0, 0, 0, 0.08)" },
-              "&.Mui-selected:hover": { backgroundColor: "rgba(0, 0, 0, 0.12)" },
-            }}
           >
-            <ListItemText primary='My Apps' />
+            <ListItemText primary='All Apps' />
           </ListItem>
-          {applications.map((app, index) => (
+          {applications.map((app) => (
             <ListItem
               button
               key={app}
               selected={selectedApp === app}
               onClick={() => setSelectedApp(app)}
-              sx={{
-                "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.04)" },
-                "&.Mui-selected": { backgroundColor: "rgba(0, 0, 0, 0.08)" },
-                "&.Mui-selected:hover": { backgroundColor: "rgba(0, 0, 0, 0.12)" },
-              }}
             >
               <ListItemText primary={app} />
             </ListItem>
@@ -97,12 +193,28 @@ function App() {
           <TranslationManager appName={selectedApp} />
         ) : (
           <GeneralAppsPage
-            setSelectedApp={setSelectedApp}
             applications={applications}
+            deploymentDates={deploymentDates}
+            requestDeleteApplication={requestDeleteApplication}
             onAddApplication={handleAddApplication}
+            onUpdateDeploymentDate={updateDeploymentDate}
+            onDeploy={handleDeployApplication}
+            handleDownload={handleDownload}
           />
         )}
       </Box>
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+        <DialogTitle>{"Confirm deletion"}</DialogTitle>
+        <DialogContent>
+          {"Are you sure you want to delete this application? This action cannot be undone."}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+          <Button onClick={handleDeleteApplication} color='primary'>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

@@ -13,21 +13,21 @@ function TranslationManager({ appName }) {
     event.preventDefault();
     setIsSubmitting(true);
 
-    const translationData = {
-      [key]: {
-        en: english,
-        fr: french,
-        nl: dutch,
-      },
-    };
+    // Adjusted to match expected backend structure
+    const translations = [
+      { language_code: "en", translation_key: key, translation_text: english },
+      { language_code: "fr", translation_key: key, translation_text: french },
+      { language_code: "nl", translation_key: key, translation_text: dutch },
+    ];
 
     axios
-      .post(
-        `${process.env.REACT_APP_API_BASE_URL}/api/applications/${appName}/add`,
-        translationData
-      )
+      .post(`${process.env.REACT_APP_API_BASE_URL}/api/applications/${appName}/translations`, {
+        translations,
+      })
+
       .then(() => {
         alert("Translations added successfully!");
+        // Resetting the form fields
         setKey("");
         setEnglish("");
         setFrench("");
