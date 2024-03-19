@@ -49,18 +49,18 @@ function App() {
   const fetchApplicationsAndDates = useCallback(async () => {
     try {
       const appData = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/applications`);
-      setApplications(appData.data);
+      // Сортировка данных приложений по алфавиту
+      const sortedAppData = appData.data.sort((a, b) => a.localeCompare(b));
+      setApplications(sortedAppData);
 
       const dates = {};
-      for (const appName of appData.data) {
-        try {
-          const response = await axios.get(
-            `${process.env.REACT_APP_API_BASE_URL}/api/applications/${appName}/deployment-date`
-          );
-          dates[appName] = formatDate(response.data.lastDeployed);
-        } catch {
-          dates[appName] = "Not deployed yet";
-        }
+      for (const appName of sortedAppData) {
+        const response = await axios.get(
+          `${process.env.REACT_APP_API_BASE_URL}/api/applications/${appName}/deployment-date`
+        );
+        // Используем formatDate для форматирования даты
+        const formattedDate = formatDate(response.data.lastDeployed);
+        dates[appName] = formattedDate; // Сохраняем отформатированную дату
       }
       setDeploymentDates(dates);
     } catch (error) {
@@ -186,7 +186,7 @@ function App() {
             onAddApplication={handleAddApplication}
             onDeploy={handleDeployApplication}
             handleDownload={handleDownload}
-            selectedAppHandler={selectedAppHandler} 
+            selectedAppHandler={selectedAppHandler}
           />
         )}
       </Box>
