@@ -13,7 +13,6 @@ function TranslationManager({ appName }) {
     event.preventDefault();
     setIsSubmitting(true);
 
-    // Adjusted to match expected backend structure
     const translations = [
       { language_code: "en", translation_key: key, translation_text: english },
       { language_code: "fr", translation_key: key, translation_text: french },

@@ -1,7 +1,6 @@
 // server/api/models/applications.js
 const db = require("../config/db");
 
-// Replace the listAllApplications function in applications.js
 async function listAllApplications() {
   try {
     const applications = await db.select("name").from("applications");
@@ -12,7 +11,6 @@ async function listAllApplications() {
   }
 }
 
-// Replace the createApplication function in applications.js
 async function createApplication(name) {
   try {
     await db("applications").insert({ name });
@@ -21,7 +19,7 @@ async function createApplication(name) {
     throw error;
   }
 }
-// Replace the getApplicationTranslations function in applications.js
+
 async function getApplicationTranslations(appName) {
   try {
     const app = await db("applications").where({ name: appName }).first();
@@ -58,7 +56,7 @@ async function addApplicationTranslations(name, translations) {
     throw error; // Or handle the error as needed
   }
 }
-// Replace the deployApplicationTranslations function in applications.js
+
 async function deployApplicationTranslations(name) {
   try {
     const app = await db("applications").where({ name }).first();
@@ -71,7 +69,6 @@ async function deployApplicationTranslations(name) {
   }
 }
 
-// Update the updateDeploymentDate function in applications.js
 async function updateDeploymentDate(name) {
   try {
     await db("applications").where({ name }).update({ last_deployed: new Date().toISOString() });
@@ -81,7 +78,6 @@ async function updateDeploymentDate(name) {
   }
 }
 
-// Update the getDeploymentDate function in applications.js
 async function getDeploymentDate(name) {
   try {
     const app = await db("applications").where({ name }).select("last_deployed").first();

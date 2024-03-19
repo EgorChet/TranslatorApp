@@ -10,6 +10,7 @@ const GeneralAppsPage = ({
   onAddApplication,
   handleDownload,
   onDeploy,
+  selectedAppHandler
 }) => {
 
   return (
@@ -26,6 +27,7 @@ const GeneralAppsPage = ({
               onDelete={() => requestDeleteApplication(appName)}
               onDownload={() => handleDownload(appName)}
               onDeploy={onDeploy} // Ensure this is correctly passed
+              onSelect={selectedAppHandler}
             />
           </Grid>
         ))}
