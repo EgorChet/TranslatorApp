@@ -157,7 +157,9 @@ function App() {
             selected={selectedApp === null}
             onClick={() => setSelectedApp(null)}
           >
-            <ListItemText primary='All Apps' />
+            <ListItemText
+              primary={<span style={{ fontWeight: "bold", fontSize: "1.2em" }}>All Apps</span>}
+            />
           </ListItem>
           {applications.map((app) => (
             <ListItem
@@ -166,7 +168,7 @@ function App() {
               selected={selectedApp === app}
               onClick={() => setSelectedApp(app)}
             >
-              <ListItemText primary={app} />
+              <ListItemText primary={<span style={{ fontSize: "1.0em" }}>{app}</span>} />
             </ListItem>
           ))}
         </List>

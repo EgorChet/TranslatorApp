@@ -35,27 +35,70 @@ async function getApplicationTranslations(appName) {
   }
 }
 
-// Replace the addApplicationTranslations function in applications.js
 async function addApplicationTranslations(name, translations) {
   try {
     const app = await db("applications").where({ name }).first();
     if (app) {
-      const translationInserts = translations.map((translation) => ({
-        application_id: app.id,
-        language_code: translation.language_code,
-        translation_key: translation.translation_key,
-        translation_text: translation.translation_text,
-        is_live: false, // Or however you're handling the live status
-      }));
-      await db("translations").insert(translationInserts);
+      await db.transaction(async (trx) => {
+        for (const translation of translations) {
+          // Check if a translation with the same key already exists
+          const existingTranslation = await trx("translations")
+            .where({
+              application_id: app.id,
+              language_code: translation.language_code,
+              translation_key: translation.translation_key,
+            })
+            .first();
+
+          if (existingTranslation) {
+            // Update the existing translation
+            await trx("translations").where({ id: existingTranslation.id }).update({
+              translation_text: translation.translation_text,
+              // Set to false if you want to make it non-live immediately,
+              // or to existingTranslation.is_live to keep its current status
+              is_live: false,
+            });
+          } else {
+            // Insert new translation
+            await trx("translations").insert({
+              application_id: app.id,
+              language_code: translation.language_code,
+              translation_key: translation.translation_key,
+              translation_text: translation.translation_text,
+              is_live: false, // or true if you want it to be live immediately
+            });
+          }
+        }
+      });
     } else {
       throw new Error(`Application with name ${name} not found`);
     }
   } catch (error) {
-    console.error("Error adding translations:", error);
+    console.error("Error adding/updating translations:", error);
     throw error; // Or handle the error as needed
   }
 }
+
+// async function addApplicationTranslations(name, translations) {
+//   try {
+//     const app = await db("applications").where({ name }).first();
+//     if (app) {
+//       const translationInserts = translations.map((translation) => ({
+//         application_id: app.id,
+//         language_code: translation.language_code,
+//         translation_key: translation.translation_key,
+//         translation_text: translation.translation_text,
+//         is_live: false, // Or however you're handling the live status
+//       }));
+//       await db("translations").insert(translationInserts);
+//     } else {
+//       throw new Error(`Application with name ${name} not found`);
+//     }
+//   } catch (error) {
+//     console.error("Error adding translations:", error);
+//     throw error; // Or handle the error as needed
+//   }
+// }
 
 async function deployApplicationTranslations(name) {
   try {
