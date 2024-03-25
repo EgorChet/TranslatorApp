@@ -12,7 +12,6 @@ exports.listAllApplications = async (req, res) => {
     res.status(500).send("Failed to list applications due to an internal error.");
   }
 };
-e;
 exports.createApplication = async (req, res) => {
   const { name } = req.body;
   try {
